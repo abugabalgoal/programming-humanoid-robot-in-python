@@ -22,6 +22,7 @@
 
 from pid import PIDAgent
 from keyframes import hello
+import numpy as np
 
 
 class AngleInterpolationAgent(PIDAgent):
@@ -32,20 +33,38 @@ class AngleInterpolationAgent(PIDAgent):
                  sync_mode=True):
         super(AngleInterpolationAgent, self).__init__(simspark_ip, simspark_port, teamname, player_id, sync_mode)
         self.keyframes = ([], [], [])
+        self.start_time = self.perception.time
 
     def think(self, perception):
         target_joints = self.angle_interpolation(self.keyframes, perception)
-        target_joints['RHipYawPitch'] = target_joints['LHipYawPitch'] # copy missing joint in keyframes
         self.target_joints.update(target_joints)
         return super(AngleInterpolationAgent, self).think(perception)
 
     def angle_interpolation(self, keyframes, perception):
         target_joints = {}
-        # YOUR CODE HERE
+        current_time = (perception.time-self.start_time)
+        
+        names, times, keys = keyframes
+        for name in range(len(names)):
+            for time in range(len(times[name]) - (1)):
+                if times[name][time]<current_time<times[name][time+1]:
+                    
+                    b0 = np.array([times[name][time], keys[name][time][0]])
+                    b1 = b0+np.array([keys[name][time][1][1], keys[name][time][1][2]])
+                    b2 = b0+np.array([keys[name][time][2][1], keys[name][time][2][2]])
+                    b3 = np.array([times[name][time + 1], keys[name][time + 1][0]])
+
+                    t1 = (current_time - times[name][time]) / (times[name][time + 1] \
+                        - times[name][time])
+                    bezier = (((1-t1)**3)*b0)+(3*((1-t1)**2)*t1*b1)\
+                                +(3*(1-t1)*(t1**2)*b2)+((t1**3)*(b3))
+                    target_joints[names[name]] = bezier[1]
+                    if(names[name] == "LHipYawPitch"):
+                        target_joints["RHipYawPitch"] = bezier[1]
 
         return target_joints
 
 if __name__ == '__main__':
     agent = AngleInterpolationAgent()
-    agent.keyframes = hello()  # CHANGE DIFFERENT KEYFRAMES
+    agent.keyframes = hello()  
     agent.run()
