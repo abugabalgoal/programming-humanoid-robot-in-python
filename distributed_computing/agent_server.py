@@ -20,11 +20,26 @@ sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '
 
 from inverse_kinematics import InverseKinematicsAgent
 
+from xmlrpc.server import SimpleXMLRPCServer
+from xmlrpc.server import SimpleXMLRPCRequestHandler
+import logging
+import threading
+
 
 class ServerAgent(InverseKinematicsAgent):
     '''ServerAgent provides RPC service
     '''
     # YOUR CODE HERE
+    def __init__(self,port=9999):
+        super(ServerAgent, self).__init__()
+        logging.basicConfig(level=logging.DEBUG)
+        server = SimpleXMLRPCServer(('localhost', port), logRequests=True)
+        server.register_instance(self)
+        server.register_introspection_functions()
+        server.register_multicall_functions()
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+    
     def get_angle(self, joint_name):
         '''get sensor value of given joint'''
         # YOUR CODE HERE
@@ -35,7 +50,7 @@ class ServerAgent(InverseKinematicsAgent):
         '''
         # YOUR CODE HERE
         self.target_joints[joint_name] = angle
-        return (joint_name, " angle set to: ", str(angle))
+        
 
     def get_posture(self):
         '''return current posture of robot'''
@@ -47,18 +62,6 @@ class ServerAgent(InverseKinematicsAgent):
         e.g. return until keyframes are executed
         '''
         # YOUR CODE HERE
-        self.keyframes = keyframes
-        self.angle_interpolation(keyframes, self.perception)
-        sum = keyframes[1]
-        timing_now,starting_time = time.time()
-        finish = False
-        while not finish:
-            timing_now = time.time()
-            finish = True
-            for index in range(len(sum)):
-                if ((timing_now - starting_time) < sum[index][-1]):
-                    finish = False
-        return True
 
     def get_transform(self, name):
         '''get transform with given name
@@ -70,7 +73,7 @@ class ServerAgent(InverseKinematicsAgent):
         '''solve the inverse kinematics and control joints use the results
         '''
         # YOUR CODE HERE
-        return self.set_transforms(effector_name, np.asarray(transform))
+        self.transforms[effector_name] = transform
 
 if __name__ == '__main__':
     agent = ServerAgent()
