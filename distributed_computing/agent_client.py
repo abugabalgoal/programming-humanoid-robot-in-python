@@ -50,7 +50,7 @@ class ClientAgent(object):
         '''set target angle of joint for PID controller
         '''
         # YOUR CODE HERE
-        return self.prox.set_angle(joint_name, angle)
+        self.prox.set_angle(joint_name, angle)
 
 
     def get_posture(self):
